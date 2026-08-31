@@ -1,5 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { applySupabaseCookies } from "@/lib/supabase/cookies";
 
 export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,14 +22,14 @@ export async function updateSession(request: NextRequest) {
           request.cookies.set(name, value);
         }
         response = NextResponse.next({ request });
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, {
-            ...options,
-            path: options?.path ?? "/",
-            sameSite: options?.sameSite ?? "lax",
-            secure: process.env.NODE_ENV === "production" ? true : options?.secure,
-          });
-        }
+        applySupabaseCookies(
+          response,
+          cookiesToSet.map((c) => ({
+            name: c.name,
+            value: c.value,
+            options: c.options ?? {},
+          })),
+        );
       },
     },
   });
