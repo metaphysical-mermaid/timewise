@@ -1,4 +1,5 @@
 import { todayLocalDate } from "@timewise/core";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listCategories, loadProfileTimezone } from "@/lib/db/types";
 import { TodayClient } from "./TodayClient";
@@ -10,7 +11,7 @@ export default async function TodayPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return null;
+    redirect("/login");
   }
 
   const timezone = await loadProfileTimezone(supabase, user.id);

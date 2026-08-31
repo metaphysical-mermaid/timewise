@@ -1,14 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "login" | "signup";
 
+async function persistSessionCookies(accessToken: string, refreshToken: string) {
+  const res = await fetch("/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "Could not save session");
+  }
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +50,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
           setInfo("Check your email to confirm your account, then sign in.");
           return;
         }
-        router.replace("/");
-        router.refresh();
+        await persistSessionCookies(
+          data.session.access_token,
+          data.session.refresh_token,
+        );
+        window.location.assign("/");
         return;
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -50,15 +66,24 @@ export function AuthForm({ mode }: { mode: Mode }) {
         setError(signInError.message);
         return;
       }
-      router.replace("/");
-      router.refresh();
+      if (!data.session) {
+        setError("Sign in succeeded but no session was returned.");
+        return;
+      }
+      await persistSessionCookies(
+        data.session.access_token,
+        data.session.refresh_token,
+      );
+      window.location.assign("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
         Email
         <input
