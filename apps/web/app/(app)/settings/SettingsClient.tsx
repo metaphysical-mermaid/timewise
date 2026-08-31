@@ -1,6 +1,10 @@
 "use client";
 
-import { categoryInputSchema, type Category } from "@timewise/core";
+import {
+  categoryInputSchema,
+  parseTimezoneInput,
+  type Category,
+} from "@timewise/core";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -47,6 +51,13 @@ export function SettingsClient({
   async function saveTimezone() {
     setError(null);
     setMessage(null);
+
+    const parsed = parseTimezoneInput(timezone);
+    if ("error" in parsed) {
+      setError(parsed.error);
+      return;
+    }
+
     const supabase = createClient();
     const {
       data: { user },
@@ -55,14 +66,19 @@ export function SettingsClient({
 
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ timezone })
+      .update({ timezone: parsed.timezone })
       .eq("user_id", user.id);
 
     if (updateError) {
       setError(updateError.message);
       return;
     }
-    setMessage("Timezone saved.");
+    setTimezone(parsed.timezone);
+    setMessage(
+      parsed.timezone !== timezone.trim()
+        ? `Timezone saved as ${parsed.timezone}.`
+        : "Timezone saved.",
+    );
   }
 
   async function addCategory(event: FormEvent) {

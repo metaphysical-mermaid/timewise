@@ -32,6 +32,12 @@ export {
 } from "./time/localDay";
 
 export {
+  isValidIanaTimezone,
+  parseTimezoneInput,
+  resolveTimezone,
+} from "./time/timezone";
+
+export {
   aggregateWeekdayWeekend,
   type EntryForAggregation,
   type WeekdayWeekendSummary,

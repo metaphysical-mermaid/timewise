@@ -1,8 +1,11 @@
+import { resolveTimezone } from "./timezone";
+
 /** Local calendar date as YYYY-MM-DD in the given IANA timezone. */
 export function toLocalDateString(instant: string | Date, timezone: string): string {
+  const tz = resolveTimezone(timezone);
   const date = typeof instant === "string" ? new Date(instant) : instant;
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
+    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -16,7 +19,7 @@ export function toLocalDateString(instant: string | Date, timezone: string): str
 
 /** Start of local day as UTC ISO string (approximation via offset parsing). */
 export function localDayStartIso(localDate: string, timezone: string): string {
-  return zonedTimeToUtc(localDate, "00:00:00", timezone);
+  return zonedTimeToUtc(localDate, "00:00:00", resolveTimezone(timezone));
 }
 
 /** End of local day (start of next day) as UTC ISO string. */
@@ -24,7 +27,7 @@ export function localDayEndIso(localDate: string, timezone: string): string {
   const [y, m, d] = localDate.split("-").map(Number);
   const next = new Date(Date.UTC(y, m - 1, d + 1));
   const nextLocal = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
-  return zonedTimeToUtc(nextLocal, "00:00:00", timezone);
+  return zonedTimeToUtc(nextLocal, "00:00:00", resolveTimezone(timezone));
 }
 
 function zonedTimeToUtc(localDate: string, localTime: string, timezone: string): string {
@@ -59,9 +62,10 @@ function partsValue(parts: Intl.DateTimeFormatPart[], type: string): string {
 }
 
 export function isWeekendLocalDate(localDate: string, timezone: string): boolean {
-  const noonUtc = zonedTimeToUtc(localDate, "12:00:00", timezone);
+  const tz = resolveTimezone(timezone);
+  const noonUtc = zonedTimeToUtc(localDate, "12:00:00", tz);
   const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
+    timeZone: tz,
     weekday: "short",
   }).format(new Date(noonUtc));
   return weekday === "Sat" || weekday === "Sun";

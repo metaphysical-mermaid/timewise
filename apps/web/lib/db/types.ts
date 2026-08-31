@@ -1,4 +1,4 @@
-import type { Category } from "@timewise/core";
+import { resolveTimezone, type Category } from "@timewise/core";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DbCategory = {
@@ -38,7 +38,14 @@ export function mapCategory(row: DbCategory): Category {
 
 export async function loadProfileTimezone(supabase: SupabaseClient, userId: string): Promise<string> {
   const { data } = await supabase.from("profiles").select("timezone").eq("user_id", userId).single();
-  return data?.timezone ?? "UTC";
+  const raw = data?.timezone ?? "UTC";
+  const timezone = resolveTimezone(raw);
+
+  if (raw !== timezone) {
+    await supabase.from("profiles").update({ timezone }).eq("user_id", userId);
+  }
+
+  return timezone;
 }
 
 export async function listCategories(supabase: SupabaseClient, userId: string): Promise<Category[]> {

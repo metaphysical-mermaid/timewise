@@ -1,4 +1,4 @@
-import { durationMinutes, formatDuration, todayLocalDate } from "@timewise/core";
+import { durationMinutes, formatDuration, resolveTimezone, todayLocalDate } from "@timewise/core";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -51,7 +51,7 @@ export default function TodayTab() {
       .select("timezone")
       .eq("user_id", user.id)
       .single();
-    const tz = profile?.timezone ?? "UTC";
+    const tz = resolveTimezone(profile?.timezone ?? "UTC");
     setTimezone(tz);
 
     const { data: cats } = await supabase
