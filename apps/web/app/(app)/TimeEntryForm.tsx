@@ -15,25 +15,36 @@ function toLocalInputValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function addOneHourLocal(localDatetime: string): string {
+  const date = new Date(localDatetime);
+  date.setHours(date.getHours() + 1);
+  return toLocalInputValue(date.toISOString());
+}
+
 export function TimeEntryForm({
   categories,
   localDate,
   entry,
+  previousEndedAt,
   onCancel,
   onSaved,
 }: {
   categories: Category[];
   localDate: string;
   entry: EntryRow | null;
+  /** ISO end time of the previous entry; new entries start here. */
+  previousEndedAt?: string | null;
   onCancel: () => void;
   onSaved: () => void | Promise<void>;
 }) {
   const defaultStart = entry
     ? toLocalInputValue(entry.started_at)
-    : `${localDate}T09:00`;
+    : previousEndedAt
+      ? toLocalInputValue(previousEndedAt)
+      : `${localDate}T09:00`;
   const defaultEnd = entry
     ? toLocalInputValue(entry.ended_at)
-    : `${localDate}T10:00`;
+    : addOneHourLocal(defaultStart);
 
   const [title, setTitle] = useState(entry?.title ?? "");
   const [categoryId, setCategoryId] = useState(

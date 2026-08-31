@@ -141,6 +141,9 @@ export function TodayClient({
           categories={categories}
           localDate={localDate}
           entry={editing}
+          previousEndedAt={
+            editing ? null : entries.length > 0 ? entries[entries.length - 1].ended_at : null
+          }
           onCancel={() => {
             setShowForm(false);
             setEditing(null);

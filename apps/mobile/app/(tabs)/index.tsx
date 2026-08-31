@@ -128,7 +128,22 @@ export default function TodayTab() {
       ) : null}
 
       {!showForm ? (
-        <Pressable style={styles.primaryBtn} onPress={() => setShowForm(true)}>
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() => {
+            const last = entries[entries.length - 1];
+            if (last) {
+              const nextStart = new Date(last.ended_at);
+              setStart(nextStart);
+              setEnd(new Date(nextStart.getTime() + 60 * 60 * 1000));
+            } else {
+              const now = new Date();
+              setStart(now);
+              setEnd(new Date(now.getTime() + 60 * 60 * 1000));
+            }
+            setShowForm(true);
+          }}
+        >
           <Text style={styles.primaryBtnText}>Add time entry</Text>
         </Pressable>
       ) : (
