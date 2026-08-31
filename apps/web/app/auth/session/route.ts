@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Establish the Supabase session in HTTP cookies from the browser tokens.
- * Needed because client-set auth cookies are unreliable on some mobile browsers.
+ * Cookies are set on the NextResponse so Set-Cookie reaches mobile Safari.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
+  const response = NextResponse.json({ ok: true });
+
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
@@ -47,7 +51,13 @@ export async function POST(request: Request) {
       },
       setAll(cookiesToSet) {
         for (const { name, value, options } of cookiesToSet) {
-          cookieStore.set(name, value, options);
+          response.cookies.set(name, value, {
+            ...options,
+            // Ensure cookies work on HTTPS production (incl. mobile Safari).
+            path: options?.path ?? "/",
+            sameSite: options?.sameSite ?? "lax",
+            secure: true,
+          });
         }
       },
     },
@@ -62,5 +72,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true });
+  return response;
 }

@@ -10,6 +10,7 @@ async function persistSessionCookies(accessToken: string, refreshToken: string) 
   const res = await fetch("/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({
       access_token: accessToken,
       refresh_token: refreshToken,

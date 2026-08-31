@@ -22,7 +22,12 @@ export async function updateSession(request: NextRequest) {
         }
         response = NextResponse.next({ request });
         for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
+          response.cookies.set(name, value, {
+            ...options,
+            path: options?.path ?? "/",
+            sameSite: options?.sameSite ?? "lax",
+            secure: process.env.NODE_ENV === "production" ? true : options?.secure,
+          });
         }
       },
     },
