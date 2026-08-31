@@ -1,19 +1,20 @@
-"use client";
-
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 type Mode = "login" | "signup";
 
 /**
- * Native form POST to /auth/login or /auth/signup.
- * Sign-in and Set-Cookie happen on the same 303 redirect response,
- * which is reliable on mobile Safari (unlike fetch-then-navigate).
+ * Server-rendered native form POST.
+ * No client JS required — critical for reliable mobile sign-in.
  */
-export function AuthForm({ mode }: { mode: Mode }) {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
-  const info = searchParams.get("info");
+export function AuthForm({
+  mode,
+  error,
+  info,
+}: {
+  mode: Mode;
+  error?: string | null;
+  info?: string | null;
+}) {
   const action = mode === "signup" ? "/auth/signup" : "/auth/login";
 
   return (

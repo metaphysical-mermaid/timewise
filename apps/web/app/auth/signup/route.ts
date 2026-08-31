@@ -1,28 +1,36 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-function redirectWithCookies(
-  request: Request,
-  path: string,
-  setCookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>,
-) {
-  const response = NextResponse.redirect(new URL(path, request.url), { status: 303 });
-  for (const { name, value, options } of setCookies) {
+type PendingCookie = { name: string; value: string; options: CookieOptions };
+
+function applyCookies(response: NextResponse, pending: PendingCookie[]) {
+  for (const { name, value, options } of pending) {
     response.cookies.set(name, value, {
-      ...options,
-      path: (options?.path as string | undefined) ?? "/",
-      sameSite: (options?.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
+      path: options.path ?? "/",
+      domain: options.domain,
+      maxAge: options.maxAge,
+      expires: options.expires,
+      httpOnly: options.httpOnly,
       secure: true,
+      sameSite: (options.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
     });
   }
-  return response;
 }
 
 export async function POST(request: Request) {
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return NextResponse.redirect(
+      new URL("/signup?error=" + encodeURIComponent("Invalid form submission"), request.url),
+      { status: 303 },
+    );
+  }
+
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
 
@@ -44,7 +52,7 @@ export async function POST(request: Request) {
 
   try {
     const cookieStore = await cookies();
-    const pending: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
+    const pending: PendingCookie[] = [];
 
     const supabase = createServerClient(url, anonKey, {
       cookies: {
@@ -54,7 +62,11 @@ export async function POST(request: Request) {
         setAll(cookiesToSet) {
           pending.length = 0;
           for (const cookie of cookiesToSet) {
-            pending.push(cookie);
+            pending.push({
+              name: cookie.name,
+              value: cookie.value,
+              options: cookie.options ?? {},
+            });
           }
         },
       },
@@ -79,7 +91,9 @@ export async function POST(request: Request) {
       );
     }
 
-    return redirectWithCookies(request, "/", pending);
+    const response = NextResponse.redirect(new URL("/", request.url), { status: 303 });
+    applyCookies(response, pending);
+    return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign up failed";
     return NextResponse.redirect(

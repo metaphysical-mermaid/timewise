@@ -1,55 +1,40 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-function redirectWithCookies(
-  request: Request,
-  path: string,
-  setCookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>,
+type PendingCookie = { name: string; value: string; options: CookieOptions };
+
+function applyCookies(
+  response: NextResponse,
+  pending: PendingCookie[],
 ) {
-  const response = NextResponse.redirect(new URL(path, request.url), { status: 303 });
-  for (const { name, value, options } of setCookies) {
+  for (const { name, value, options } of pending) {
+    // Only pass fields Next.js accepts — spreading full Supabase options can 500.
     response.cookies.set(name, value, {
-      ...options,
-      path: (options?.path as string | undefined) ?? "/",
-      sameSite: (options?.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
+      path: options.path ?? "/",
+      domain: options.domain,
+      maxAge: options.maxAge,
+      expires: options.expires,
+      httpOnly: options.httpOnly,
       secure: true,
+      sameSite: (options.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
     });
   }
-  return response;
-}
-
-async function createSupabaseForRedirect(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error("Missing Supabase env");
-  }
-
-  const cookieStore = await cookies();
-  const pending: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        pending.length = 0;
-        for (const cookie of cookiesToSet) {
-          pending.push(cookie);
-        }
-      },
-    },
-  });
-
-  return { supabase, pending, url: request.url };
 }
 
 export async function POST(request: Request) {
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return NextResponse.redirect(
+      new URL("/login?error=" + encodeURIComponent("Invalid form submission"), request.url),
+      { status: 303 },
+    );
+  }
+
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
 
@@ -60,8 +45,37 @@ export async function POST(request: Request) {
     );
   }
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    return NextResponse.redirect(
+      new URL("/login?error=" + encodeURIComponent("Server misconfigured"), request.url),
+      { status: 303 },
+    );
+  }
+
   try {
-    const { supabase, pending } = await createSupabaseForRedirect(request);
+    const cookieStore = await cookies();
+    const pending: PendingCookie[] = [];
+
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          pending.length = 0;
+          for (const cookie of cookiesToSet) {
+            pending.push({
+              name: cookie.name,
+              value: cookie.value,
+              options: cookie.options ?? {},
+            });
+          }
+        },
+      },
+    });
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -71,7 +85,9 @@ export async function POST(request: Request) {
       );
     }
 
-    return redirectWithCookies(request, "/", pending);
+    const response = NextResponse.redirect(new URL("/", request.url), { status: 303 });
+    applyCookies(response, pending);
+    return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sign in failed";
     return NextResponse.redirect(
