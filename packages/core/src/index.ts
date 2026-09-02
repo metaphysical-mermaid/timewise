@@ -44,10 +44,14 @@ export {
 } from "./aggregate/weekdayWeekend";
 
 export {
+  insightAskInputSchema,
   insightContentSchema,
+  insightGenerateInputSchema,
+  insightMessageSchema,
   insightSuggestionSchema,
   insightTypeSchema,
   type InsightContent,
+  type InsightMessage,
   type InsightSuggestion,
   type InsightType,
 } from "./insights/schema";

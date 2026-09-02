@@ -157,7 +157,10 @@ create policy ai_insights_select_own on public.ai_insights
 create policy ai_insights_insert_own on public.ai_insights
   for insert to authenticated with check (user_id = auth.uid());
 
+create policy ai_insights_update_own on public.ai_insights
+  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.categories to authenticated;
 grant select, insert, update, delete on public.time_entries to authenticated;
-grant select, insert on public.ai_insights to authenticated;
+grant select, insert, update on public.ai_insights to authenticated;

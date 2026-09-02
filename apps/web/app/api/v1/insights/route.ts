@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { insightMessageSchema, type InsightMessage } from "@timewise/core";
 import { getAuthedRequest } from "@/lib/auth/getAuthedRequest";
 
 function jsonError(message: string, status: number) {
@@ -27,12 +28,19 @@ export async function GET(request: Request) {
     return jsonError("No insights yet", 404);
   }
 
+  const conversation = ((data.content?.conversation as unknown[]) ?? [])
+    .map((message) => insightMessageSchema.safeParse(message))
+    .filter((result): result is { success: true; data: InsightMessage } => result.success)
+    .map((result) => result.data);
+
   return NextResponse.json({
     id: data.id,
     periodStart: data.period_start,
     periodEnd: data.period_end,
     summary: data.content.summary,
     content: data.content.insight,
+    question: typeof data.content?.question === "string" ? data.content.question : null,
+    conversation,
     createdAt: data.created_at,
   });
 }

@@ -5,7 +5,7 @@ export default function InsightsPage() {
     <main className="app-screen">
       <header className="mb-4">
         <h1 className="app-title">Insights</h1>
-        <p className="app-subtitle">AI summaries of weekday and weekend patterns.</p>
+        <p className="app-subtitle">Ask questions about weekday and weekend patterns.</p>
       </header>
       <InsightsClient />
     </main>

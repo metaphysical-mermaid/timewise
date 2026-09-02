@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addDaysLocalDate, todayLocalDate } from "@timewise/core";
+import { addDaysLocalDate, insightGenerateInputSchema, todayLocalDate } from "@timewise/core";
 import { getAuthedRequest } from "@/lib/auth/getAuthedRequest";
 import { loadProfileTimezone } from "@/lib/db/types";
 import { generateWeekdayWeekendInsight } from "@/lib/openai/generateInsights";
@@ -12,6 +12,18 @@ export async function POST(request: Request) {
   const authed = await getAuthedRequest(request);
   if (!authed) {
     return jsonError("Unauthorized", 401);
+  }
+
+  let question: string | undefined;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const parsed = insightGenerateInputSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      return jsonError(parsed.error.errors[0]?.message ?? "Invalid request", 400);
+    }
+    question = parsed.data.question?.trim() || undefined;
+  } catch {
+    question = undefined;
   }
 
   const timezone = await loadProfileTimezone(authed.supabase, authed.user.id);
@@ -58,7 +70,15 @@ export async function POST(request: Request) {
       timezone,
       periodStart,
       periodEnd,
+      question,
     );
+
+    const storedContent = {
+      summary,
+      insight: content,
+      question: question ?? null,
+      conversation: [] as Array<{ role: "user" | "assistant"; content: string }>,
+    };
 
     const { data: inserted, error: insertError } = await authed.supabase
       .from("ai_insights")
@@ -67,7 +87,7 @@ export async function POST(request: Request) {
         period_start: periodStart,
         period_end: periodEnd,
         insight_type: "weekday_weekend",
-        content: { summary, insight: content },
+        content: storedContent,
       })
       .select("*")
       .single();
@@ -82,6 +102,8 @@ export async function POST(request: Request) {
       periodEnd: inserted.period_end,
       summary,
       content,
+      question: question ?? null,
+      conversation: [],
       createdAt: inserted.created_at,
     });
   } catch (err) {
