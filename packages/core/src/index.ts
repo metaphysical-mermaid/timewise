@@ -16,6 +16,15 @@ export {
 } from "./schemas/timeEntry";
 
 export {
+  todoInputSchema,
+  todoSchema,
+  todoUpdateSchema,
+  type Todo,
+  type TodoInput,
+  type TodoUpdate,
+} from "./schemas/todo";
+
+export {
   durationHours,
   durationMinutes,
   formatDuration,

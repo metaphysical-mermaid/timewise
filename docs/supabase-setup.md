@@ -13,3 +13,7 @@
 7. Copy `.env.example` to `apps/web/.env.local` and fill in values.
 
 For schema changes later, add a new SQL file under `supabase/migrations/` and run it manually in the SQL Editor.
+
+After the initial schema, also run:
+- `supabase/migrations/20260902120000_ai_insights_update.sql` (follow-up Q&A persistence)
+- `supabase/migrations/20260902121000_todos.sql` (daily todos)
