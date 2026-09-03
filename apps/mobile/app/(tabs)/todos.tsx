@@ -44,7 +44,24 @@ export default function TodosTab() {
     const tz = resolveTimezone(profile?.timezone ?? "UTC");
     setTimezone(tz);
 
-    const day = localDate || todayLocalDate(tz);
+    const today = todayLocalDate(tz);
+    const day = localDate || today;
+
+    // Carry incomplete todos from earlier days onto today so they don't disappear overnight.
+    if (day === today) {
+      const { error: carryError } = await supabase
+        .from("todos")
+        .update({ local_date: today })
+        .eq("done", false)
+        .lt("local_date", today);
+      if (carryError) {
+        setError(carryError.message);
+        setTodos([]);
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data, error: fetchError } = await supabase
       .from("todos")
       .select("id, title, done, local_date, sort_order")
@@ -134,6 +151,7 @@ export default function TodosTab() {
           </Text>
           <Text style={styles.hint}>
             {remaining} remaining · {todos.length} total
+            {localDate === today ? " · undone items carry over" : ""}
           </Text>
         </View>
         <Pressable

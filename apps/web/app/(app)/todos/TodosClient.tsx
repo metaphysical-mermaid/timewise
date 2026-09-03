@@ -30,6 +30,23 @@ export function TodosClient({
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    const today = todayLocalDate(timezone);
+
+    // Carry incomplete todos from earlier days onto today so they don't disappear overnight.
+    if (localDate === today) {
+      const { error: carryError } = await supabase
+        .from("todos")
+        .update({ local_date: today })
+        .eq("done", false)
+        .lt("local_date", today);
+      if (carryError) {
+        setError(carryError.message);
+        setTodos([]);
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data, error: fetchError } = await supabase
       .from("todos")
       .select("id, title, done, local_date, sort_order")
@@ -44,7 +61,7 @@ export function TodosClient({
       setTodos((data as TodoRow[]) ?? []);
     }
     setLoading(false);
-  }, [localDate]);
+  }, [localDate, timezone]);
 
   useEffect(() => {
     void loadTodos();
@@ -133,6 +150,7 @@ export function TodosClient({
           <p className="font-semibold">{localDate === today ? "Today" : localDate}</p>
           <p className="app-hint">
             {remaining} remaining · {todos.length} total
+            {localDate === today ? " · undone items carry over" : ""}
           </p>
         </div>
         <button

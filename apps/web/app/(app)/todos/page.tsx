@@ -21,7 +21,7 @@ export default async function TodosPage() {
     <main className="app-screen">
       <header className="mb-4">
         <h1 className="app-title">Todos</h1>
-        <p className="app-subtitle">Plan what you want to get done today.</p>
+        <p className="app-subtitle">Plan the day. Undone items carry over automatically.</p>
       </header>
       <TodosClient timezone={timezone} initialDate={initialDate} />
     </main>
